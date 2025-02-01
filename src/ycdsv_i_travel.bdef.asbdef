@@ -1,0 +1,136 @@
+managed implementation in class zbp_cdsv_i_travel unique;
+strict ( 2 );
+
+define behavior for YCDSV_I_TRAVEL alias travel
+implementation in class zbp_cdsv_i_travel unique
+persistent table /dmo/travel_m
+with additional save
+lock master
+early numbering
+authorization master ( global )
+etag master LastChangedAt
+{
+  field ( readonly ) LastChangedAt, LastChangedBy, CreatedAt, CreatedBy;
+  field ( mandatory ) AgencyId, CustomerId, BeginDate, EndDate;
+  field ( mandatory : create ) BookingFee;
+  field ( readonly ) TravelId;
+  // mapping for /dmo/travel_m corresponding;
+  mapping for /dmo/travel_m
+    {
+      AgencyId      = agency_id;
+      BeginDate     = begin_date;
+      BookingFee    = booking_fee;
+      CreatedAt     = created_at;
+      CreatedBy     = created_by;
+      CurrencyCode  = currency_code;
+      CustomerId    = customer_id;
+      Description   = description;
+      EndDate       = end_date;
+      LastChangedAt = last_changed_at;
+      LastChangedBy = last_changed_by;
+      OverallStatus = overall_status;
+      TotalPrice    = total_price;
+      TravelId      = travel_id;
+    }
+
+  // standard operations for travel entity
+  create ( precheck );
+  update ( precheck );
+  delete;
+
+  // instance action and dynamic action control
+  action ( features : instance ) acceptTravel result [1] $self;
+  action ( features : instance ) rejectTravel result [1] $self;
+  // internal action that is called by determinations
+  internal action ReCalcTotalPrice;
+
+  // instance factory action for copying travel instances
+  factory action copyTravel [1];
+
+  // validations
+  validation validateCustomer on save { create; update; field CustomerId; }
+  // validation validateAgency on save { create; field agency_id; }
+  validation validateDates on save { create; update; field begindate, enddate; }
+  validation totalValue on save { create; update; field BookingFee, TotalPrice; }
+  determination setStatusToOpen on modify { create; field OverallStatus, Description ; }
+
+  // create booking by association
+  association _Booking { create ( features : instance );  }
+}
+
+define behavior for YCDSV_I_BOOKING alias booking
+implementation in class zcl_bp_booking_ycdsv2 unique
+persistent table /dmo/booking_m
+etag master LastChangedAt
+lock dependent by _Travel
+early numbering
+authorization dependent by _Travel
+{
+  // administrative fields: read only
+  field ( readonly ) LastChangedAt;
+
+  // mapping entity's field types with table field types
+  mapping for /dmo/booking_m
+    {
+      BookingDate   = booking_date;
+      BookingId     = booking_id;
+      BookingStatus = booking_status;
+      CarrierId     = carrier_id;
+      ConnectionId  = connection_id;
+      CurrencyCode  = currency_code;
+      CustomerId    = customer_id;
+      FlightDate    = flight_date;
+      FlightPrice   = flight_price;
+      LastChangedAt = last_changed_at;
+      TravelId      = travel_id;
+    }
+  // standard operations for booking supplement entity
+  update;
+  field ( readonly ) TravelId, BookingId;
+  association _Travel;
+  association _BookSuppl { create ( features : instance ); }
+  // validations
+  //  validation validateStatus on save { create; field booking_status; }
+  //  validation validateCustomer     on save { create; field customer_id; }
+  //  validation validateConnection   on save { create; field carrier_id, connection_id, flight_date; }
+  //  validation validateCurrencyCode on save { create; field currency_code; }
+  //  validation validateFlightPrice  on save { create; field flight_price; }
+  //
+  //  // determination for calculation of total flight price
+  determination calculateTotalPrice on modify { create; field FlightPrice, CurrencyCode; }
+}
+
+define behavior for YCDSV_I_BOOKSUPPL alias booksupl
+implementation in class zcl_bp_suppl unique
+with unmanaged save
+etag master LastChangedAt
+lock dependent by _Travel
+early numbering
+authorization dependent by _Travel
+{
+  // administrative fields: read only
+  field ( readonly ) LastChangedAt;
+
+  mapping for /dmo/booksuppl_m
+    {
+      BookingId           = booking_id;
+      BookingSupplementId = booking_supplement_id;
+      CurrencyCode        = currency_code;
+      LastChangedAt       = last_changed_at;
+      Price               = price;
+      SupplementId        = supplement_id;
+      TravelId            = travel_id;
+    }
+  update;
+  //delete;
+  field ( readonly ) TravelId, BookingId, BookingSupplementId;
+  // determination for calculation of total suppl. price
+  //  determination calculateTotalPrice on modify { create; field price, currency_code; }
+  //
+  //  // validations
+  //  validation validateCurrencyCode on save { create; field currency_code; }
+  //  validation validateSupplement   on save { create; field supplement_id; }
+  //  validation validatePrice        on save { create; field price; }
+  association _Travel;
+  association _Booking;
+}

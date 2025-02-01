@@ -1,0 +1,24 @@
+projection;
+strict ( 2 );
+
+define behavior for YCDSV_C_TRAVEL_APPROVER  alias Approver
+use etag
+{
+ field ( readonly ) BeginDate, EndDate, TotalPrice, CustomerID;
+ // use create;
+  use update;
+ // use delete;
+
+  use action acceptTravel;
+  use action rejectTravel;
+  //use action copyTravel;
+
+ // use association _Booking { create; }
+}
+
+//define behavior for ZCDSV_C_BOOKING_APPROVER //alias <alias_name>
+//{
+//  use update;
+//
+//  use association _Travel;
+//}
